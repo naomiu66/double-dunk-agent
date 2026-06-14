@@ -21,3 +21,5 @@ while not done:
     
     done = terminated or truncated
     
+    print(info)
+    
