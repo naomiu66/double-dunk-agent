@@ -1,13 +1,14 @@
 import gymnasium as gym
 import ale_py
-from gymnasium.wrappers import RecordEpisodeStatistics, RecordVideo
+from gymnasium.wrappers import RecordEpisodeStatistics, RecordVideo, AtariPreprocessing
 
 # import torch
 # import torch.nn as nn
 
 gym.register_envs(ale_py)
 
-env = gym.make("ALE/DoubleDunk-v5", render_mode="human")
+env = gym.make("ALE/DoubleDunk-v5", render_mode="human", frameskip=1)
+env = AtariPreprocessing(env)
 
 obs, info = env.reset()
 
