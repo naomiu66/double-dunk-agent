@@ -2,6 +2,7 @@ import cv2
 import gymnasium as gym
 import ale_py
 from gymnasium.wrappers import RecordVideo, AtariPreprocessing, FrameStackObservation
+from gymnasium import spaces
 
 import numpy as np
 import os
@@ -9,9 +10,12 @@ import os
 import torch
 import torch.nn as nn
 
+import matplotlib.pyplot as plt
+
 frameskips = 4
-num_recordings = 3
-model_path = f"{os.getcwd()}/models/ppo/pacman-agent.pth"
+stack_size = 8
+num_recordings = 10
+model_path = f"{os.getcwd()}/models/ppo-fine-tuned/pacman-agent-ft-v6.pth"
 video_dir = f"{os.getcwd()}/data/ppo/eval"
 
 class ResizeRender(gym.Wrapper):
@@ -33,7 +37,7 @@ class PacmanAgent(nn.Module):
     def __init__(self, n_hid, n_out):
         super().__init__()
         self.network = nn.Sequential(
-            layer_init(nn.Conv2d(frameskips, 32, kernel_size=8, stride=4)),
+            layer_init(nn.Conv2d(stack_size, 32, kernel_size=8, stride=4)),
             nn.ReLU(),
             
             layer_init(nn.Conv2d(32, 64, kernel_size=4, stride=2)),
@@ -71,13 +75,13 @@ class PacmanAgent(nn.Module):
 
 gym.register_envs(ale_py)
 
-env = gym.make("ALE/Pacman-v5", render_mode="rgb_array", frameskip=1)
+env = gym.make("ALE/MsPacman-v5", render_mode="rgb_array", frameskip=1)
 env = AtariPreprocessing(env, frame_skip=frameskips, scale_obs=True)
-env = FrameStackObservation(env, stack_size=frameskips)
+env = FrameStackObservation(env, stack_size=stack_size)
 env = ResizeRender(env)
 env = RecordVideo(env, video_folder=video_dir, episode_trigger=lambda x: True)
 
-action_size = env.action_space.n
+action_size = np.int64(5)
 
 agent = PacmanAgent(512, action_size)
 agent.load_state_dict(torch.load(model_path))
@@ -95,7 +99,7 @@ for recording in range(num_recordings):
         obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
         
         with torch.no_grad():
-            action = agent.get_action(obs_tensor).item()
+            action = agent.get_action(obs_tensor)
         
         obs, reward, terminated, truncated, info = env.step(action)
             
